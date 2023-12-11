@@ -1,6 +1,6 @@
 /*
 A TDS Macro made by LucasLiorLE
-Github: https://github.com/LucasLiorLE
+Github: https://github.com/LucasLiorLE/TDS-Macro
 */
 
 #SingleInstance On
