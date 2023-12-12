@@ -17,9 +17,9 @@ Return
 SplitPath, A_AhkPath,, ahkDirectory
 
 If (!FileExist(ahkPath := ahkDirectory "\AutoHotkeyU" bits ".exe"))
-MsgBox, 0x10, "Error", % "Couldn't find the " bits "-bit Unicode version of Autohotkey in:`n" ahkPath
+	MsgBox, 0x10, "Error", % "Couldn't find the " bits "-bit Unicode version of Autohotkey in:`n" ahkPath
 Else
-Reload(ahkpath)
+	Reload(ahkpath)
 
 ExitApp
 }
@@ -28,7 +28,6 @@ static cmd := DllCall("GetCommandLine", "Str"), params := DllCall("shlwapi\PathG
 Run % """" ahkpath """ /r " params
 }
 
-; elevate script if required (check write permissions in ScriptDir)
 h := DllCall("CreateFile", "Str", A_ScriptFullPath, "UInt", 0x40000000, "UInt", 0, "UInt", 0, "UInt", 4, "UInt", 0, "UInt", 0), DllCall("CloseHandle", "UInt", h)
 if (h = -1)
 {
@@ -38,7 +37,6 @@ if !A_IsAdmin {
 MsgBox, 0x40010, Error, You must run the macro as administrator in this folder!`nIf you don't want to do this, move the macro to a different folder (e.g. Downloads, Desktop)
 ExitApp
 }
-; elevated but still can't write, read-only directory?
 MsgBox, 0x40010, Error, You cannot run the macro in this folder!`nTry moving the macro to a different folder (e.g. Downloads, Desktop)
 }
 
@@ -103,13 +101,14 @@ config["Settings"] := {"StartHotkey":"F1"
     ,"OpenMedic":"F4"
     ,"AlwaysOnTop":0}
 
-config["AutoSelect"] := {"PrivateServerLinkCode":""
-    ,"Map":"Winter Bridges"
-    ,"EGTower":""
-    ,"LGTower":""
-    ,"UpgradeTowerKeybind":"E"
-    ,"DeleteTowerKeybind":"X"
-    ,"CommanderAbilityKey":"F"}
+config["AutoSelect"] := {"CommanderKeyAbility":""
+	,"UpgradeKey":""
+	,"DeleteKey":""
+	,"PrivateServerLinkCode":""
+	,"Map":""
+	,"EarlyGameTower":""
+	,"LateGameTower":""
+	,"WebhookURL":""}
 
 config["Status"] := {"TotalRuntime":0
     ,"SessionRuntime":0
@@ -120,42 +119,39 @@ config["Status"] := {"TotalRuntime":0
     ,"TotalRounds":0
     ,"SessionRounds":0
     ,"Webhook":""
-    ,"BotToken":""
-    ,"MainChannelID":""
-    ,"MainChannelCheck":1
     ,"DiscordUID":""
     ,"TotalDisconnects":0
     ,"SessionDisconnects":0}
 
-for k,v in config
-for i,j in v
-%i% := j
+for category, values in config 
+	for key, defualtValue in values 
+		%key% := defualtValue
 
 if FileExist(A_WorkingDir "\settings\config.ini")
-FileRead, configFiles, "\settings\config.ini"
+	ReadIni(A_WorkingDir "\settings\config.ini")
 
 ini := ""
-for k,v in config
+for category,values in config
 {
-ini .= "[" k "]`r`n"
-for i in v
-ini .= i "=" %i% "`r`n"
-ini .= "`r`n"
+	ini .= "[" category "]`r`n"
+	for key, value in values {
+		ini .= key "=" %value% "`r`n"
+	}
+	ini .= "`r`n"
 }
+
 FileDelete, %A_WorkingDir%\settings\config.ini
 FileAppend, %ini%, %A_WorkingDir%\settings\config.ini
-
-global maps:=["Toyboard","Night Station","Grass Isles","Winter Bridges"]
-global loadout:=["Farm", %FTower%, %STower%, "Commander", "DJ"]
 
 ;==========================
 ; START/STOP
 
-Gui, Add, Button, x350 y20 -Wrap vStartButton gStart Disabled, % " Start Macro"
-Gui, Add, Button, x425 y20 -Wrap vStopButton gStop Disabled, % " Stop Macro"
+Gui, Add, Button, x350 y20 -Wrap vStartButton gStart Disabled, % " Start (" StartHotkey ")"
+Gui, Add, Button, x425 y20 -Wrap vStopButton gStop Disabled, % " Stop (" StopHotkey ")"
 Gui, Add, Groupbox, x350 h100, Status
 
 Gui, Add, Button, x350 vHotKeyGUI gHotkeyGUI, Change Hotkeys
+Gui, Add, Button, x350 vSaveSettings gSetSettings, Save settings
 
 Gui, Add, Tab3, x0 y-1 w350 h300 -Wrap hwndhTab vtab, % "Main|Settings|Other|Credits|Status"
 
@@ -165,7 +161,7 @@ Gui, Tab, Main
 Gui, Add, GroupBox, x10 y30 w325 h100 vPS, Private server link:
 Gui, Add, GroupBox, x10 y150 w325 h100 vMap, Select a map:
 
-Gui, Add, Edit, x20 y50 w280 vPSLink
+Gui, Add, Edit, x20 y50 w280 vPSLink gServerLink
 Gui, Add, Button, gNoPS, I don't have a private server
 
 ; MAP SELECTING
@@ -224,7 +220,7 @@ Gui, Show, w500 h300, Tower Defense Simulator Macro v%VersionID%
 WinSet, Transparent, % 255-floor(GuiTransparency*2.55), ahk_id %hGUI%
 
 
-; ENABLE STUFFq
+; ENABLE STUFF
 
 
 GuiControl, Enable, StartButton
@@ -285,47 +281,47 @@ If (FTower = "Shotgunner") {
         PST := "Accel"
     }
 }
-
-if ((FTower in Gladiator,Shotgunner,Golden Scout or STower in Accelerator,Minigunner,Golden Minigunner)){
+if (FTower = "" or STower = "" or SelectedMap = "" or PSLink = "") {
+	MsgBox,0x40010, Error, One of the following is empty`nEarly game tower: %FTower%`nLate game tower: %STower%`nMap: %SelectedMap%`nPrivate server link: %PSLink%
+	return
+}
+else ((FTower in Gladiator,Shotgunner,Golden Scout or STower in Accelerator,Minigunner,Golden Minigunner)) 
+{
     MsgBox, 4, Are you sure you want to start the macro?,Loadout: Farm, %FTower%, %STower%, Commander, DJ`nMap: %SelectedMap%
     IfMsgBox Yes
         GuiControl, Disable, StartButton
         GuiControl, Enable, StopButton
 
-        ; Run, chrome.exe --new-tab %PSLink%
-        ; WinWait, Roblox
-        ; WinActivate, Roblox
+        Run, chrome.exe --new-tab %PSLink%
+        WinWait, Roblox
+        WinActivate, Roblox
 
-        ; BUILDING LOADOUT / CHECKING
+        BuildLoadout()
 
-        ; GO TO MAP
-
-        Run, Join.ahk
-
-        ; WAIT SCRIPT (ADDING LATER)
-        Run, Maps\%SelectedMap%\%PFT%%PST%.ahk
+		SetTimer, Macro, 1000
+		return
 
     IfMsgBox No
         MsgBox, Canceled.
    
 }
-else {
-    if (FTower in Gladiator,Shotgunner,Golden Scout) {
-        MsgBox, Please select a lategame tower.`nYour earlygame tower is: %FTower%
-    }
-    else if (STower in Accelerator,Minigunner,Golden Minigunner) {
-        MsgBox, Please select an earlygame tower.`nYour lategame tower is: %STower%
-    }
-    else {
-        MsgBox, Please select a lategame and earlygame tower.
-    }
-}
 return
+
+Macro:
+	Run, Maps\Join.ahk
+
+    WinWait Roblox
+    Run, Maps\%SelectedMap%\%PFT%%PST%.ahk
+return
+
+BuildLoadout() {
+	return
+}
+
 
 Stop:
 GuiControl, Enable, StartButton
 GuiControl, Disable, StopButton
-
 return
 
 Sub:
@@ -346,124 +342,38 @@ MSpam:
 Run Auto\AutoMedicSpam.ahk
 return
 
+EnableAll:
+	return
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; DEFINITIONS (DO NOT TOUCH!)
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+SendRuntime: 
+	return
 
-HotkeyGUI(){
-global
-Gui, hotkeys:Destroy
-Gui, hotkeys:Add, Text, x10 y23 w60 +left +BackgroundTrans,Start Macro:
-Gui, hotkeys:Add, Text, x10 yp+19 w60 +left +BackgroundTrans,Stop Macro:
-    Gui, hotkeys:Add, Text, x10 yp+19 w60 +left +BackgroundTrans, Open COA:
-    Gui, hotkeys:Add, Text, x10 yp+19 w60 +left +BackgroundTrans, Open Medic:
-Gui, hotkeys:Add, Hotkey, x70 y20 w120 h18 vStartHotkeyEdit gsaveHotkey, %StartHotkey%
-Gui, hotkeys:Add, Hotkey, x70 yp+19 w120 h18 vStopHotkeyEdit gsaveHotkey, %StopHotkey%
-    Gui, hotkeys:Add, Hotkey, x70 yp+19 w120 h18 vOpenCOAEdit gsaveHotkey, %OpenCOA%
-    Gui, hotkeys:Add, Hotkey, x70 yp+19 w120 h18 vOpenMedicEdit gsaveHotkey, %OpenMedic%
-Gui, hotkeys:Add, Button, x30 yp+30 w140 h20 gResetHotkeys, Restore back to defualt
-    Gui, hotkeys:Show, AutoSize, Hotkeys
-}
-ResetHotkeys(){
-global
-Hotkey, %StartHotkey%, start, UseErrorLevel Off
-Hotkey, %StopHotkey%, stop, UseErrorLevel Off
-Hotkey, %OpenCOA%, stop, UseErrorLevel Off
-Hotkey, %OpenMedic%, stop, UseErrorLevel Off
-IniWrite, % (StartHotkey := "F1"), settings\config.ini, Settings, StartHotkey
-IniWrite, % (StopHotkey := "F2"), settings\config.ini, Settings, StopHotkey
-IniWrite, % (OpenCOA := "F3"), settings\config.ini, Settings, StopHotkey
-IniWrite, % (OpenMedic := "F4"), settings\config.ini, Settings, StopHotkey
-GuiControl, hotkeys:, StartHotkeyEdit, F1
-GuiControl, hotkeys:, StopHotkeyEdit, F2
-GuiControl, hotkeys:, OpenCOAEdit, F3
-GuiControl, hotkeys:, OpenMedicEdit, F4
-GuiControl, %hGUI%:, StartButton, % " Start (F1)"
-GuiControl, %hGUI%:, StopButton, % " Stop (F2)"
-Hotkey, %StartHotkey%, start, UseErrorLevel On
-Hotkey, %StopHotkey%, stop, UseErrorLevel On
-    Hotkey, %OpenCOA%, stop, UseErrorLevel On
-Hotkey, %OpenMedic%, stop, UseErrorLevel On
-}
-saveHotkey(hCtrl){
-global
-local k, v, l, NewHotkey
-Gui +OwnDialogs
-GuiControlGet, k, Name, %hCtrl%
+SendWins: 
+	return
 
-v := StrReplace(k, "Edit")
-if !(%k% ~= "^[!^+]+$")
-{
-switch % Format("sc{:03X}", GetKeySC(%k%))
-{
-case FwdKey,LeftKey,BackKey,RightKey,RotLeft,RotRight,RotUp,RotDown,ZoomIn,ZoomOut,SC_E,SC_R,SC_L,SC_Esc,SC_Enter,SC_LShift,SC_Space:
-GuiControl, , %hCtrl%, % %v%
-msgbox, 0x1030, Unacceptable Hotkey!, % "That hotkey cannot be used!`nThe key is already used elsewhere in the macro."
-return
+SendLosses: 
+	return
 
-case SC_1,"sc003","sc004","sc005","sc006","sc007","sc008":
-GuiControl, , %hCtrl%, % %v%
-msgbox, 0x1030, Unacceptable Hotkey!, % "That hotkey cannot be used!`nIt will be required to use your tower slots."
-return
-}
+SendCoins: 
+	return 
 
-if (StrLen(%k%) = 0) || (%k% = StartHotkey) || (%k% = StopHotkey) || (%k% = OpenCOA) || (%k% = OpenMedic)
-GuiControl, , %hCtrl%, % %v%
-else
-{
-l := StrReplace(v, "Hotkey")
-Hotkey, % %v%, %l%, UseErrorLevel Off
-IniWrite, % (%v% := %k%), settings\config.ini, Settings, %v%
-GuiControl, %hGUI%:, %l%Button, % ((l = "Start") ? " Show " : (l = "Stop") ? "" : " ") l " (" %v% ")"
-Hotkey, % %v%, %l%, % ("UseErrorLevel On" (v = "StopButton" ? " T2" : ""))
-}
-}
-}
-saveHotkeyConfig(){
-global
-GuiControlGet, ShowOnPause
-IniWrite, %ShowOnPause%, settings\config.ini, Settings, ShowOnPause
-}
+SendDisconnects:
+	return
+	
+TSendRuntime: 
+	return
 
-SaveGui(){
-global hGUI, GuiX, GuiY
-VarSetCapacity(wp, 44), NumPut(44, wp)
-    DllCall("GetWindowPlacement", "uint", hGUI, "uint", &wp)
-x := NumGet(wp, 28, "int"), y := NumGet(wp, 32, "int")
-if (x > 0)
-IniWrite, %x%, settings\config.ini, Settings, GuiX
-if (y > 0)
-IniWrite, %y%, settings\config.ini, Settings, GuiY
-}
+TSendWins: 
+	return
 
-ResetConfig(){
-Gui, +OwnDialogs
-msgbox, 0x40034, Reset Settings, Are you sure you want to reset ALL settings? This will set all settings back to normal.`nIf you want to proceed, click 'Yes'. Backup your 'settings' folder if you're unsure.
-IfMsgBox, Yes
-{
-FileRemoveDir, %A_WorkingDir%\settings, 1
-GoSub, stop
-        reload
-}
-}
+TSendLosses: 
+	return
 
-Webhook() {
-    ; COMING LATER!!!
-   
-webhook := """ webhook """
-bottoken := """ bottoken """
+TSendCoins: 
+	return 
 
-MainChannelCheck := """ MainChannelCheck """
-MainChannelID := """ MainChannelID """
-
-    Gui, new
-    Gui, Add, Text,, Discord webhook ID:
-    Gui, Add, Edit, vWebhookID
-    Gui, Add, Button, gSendTest, Send Test
-    Gui, Add, Button, gSetWebhook, Set Discord Webhook
-    Gui, Show, AutoSize, Discord webhook settings
-}
+TSendDisconnects:
+	return
 
 SendTest:
     Gui, Submit, NoHide
@@ -471,6 +381,7 @@ SendTest:
     whr := ComObjCreate("WinHttp.WinHttpRequest.5.1")
     whr.Open("POST", url, true)
     whr.SetRequestHeader("Content-Type", "application/json")
+	
     whr.Send("{""content"": ""test""}")
 return
 
@@ -479,7 +390,194 @@ SetWebhook:
     config["Status"]["Webhook"] := WebhookID
     SaveConfig()
     MsgBox, Webhook ID saved!
+	SetTimer, CheckAndSendReport, 1
 return
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; DEFINITIONS (DO NOT TOUCH!)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+HotkeyGUI(){
+	global
+	Gui, hotkeys:Destroy
+	Gui, hotkeys:Add, Text, x10 y23 w60 +left +BackgroundTrans,Start Macro:
+	Gui, hotkeys:Add, Text, x10 yp+19 w60 +left +BackgroundTrans,Stop Macro:
+    Gui, hotkeys:Add, Text, x10 yp+19 w60 +left +BackgroundTrans, Open COA:
+    Gui, hotkeys:Add, Text, x10 yp+19 w60 +left +BackgroundTrans, Open Medic:
+	Gui, hotkeys:Add, Hotkey, x70 y20 w120 h18 vStartHotkeyEdit gsaveHotkey, %StartHotkey%
+	Gui, hotkeys:Add, Hotkey, x70 yp+19 w120 h18 vStopHotkeyEdit gsaveHotkey, %StopHotkey%
+    Gui, hotkeys:Add, Hotkey, x70 yp+19 w120 h18 vOpenCOAEdit gsaveHotkey, %OpenCOA%
+    Gui, hotkeys:Add, Hotkey, x70 yp+19 w120 h18 vOpenMedicEdit gsaveHotkey, %OpenMedic%
+	Gui, hotkeys:Add, Button, x30 yp+30 w140 h20 gResetHotkeys, Restore back to defualt
+    Gui, hotkeys:Show, AutoSize, Hotkeys
+}
+
+
+ResetHotkeys(){
+	global
+	Hotkey, %StartHotkey%, start, UseErrorLevel Off
+	Hotkey, %StopHotkey%, stop, UseErrorLevel Off
+	Hotkey, %OpenCOA%, stop, UseErrorLevel Off
+	Hotkey, %OpenMedic%, stop, UseErrorLevel Off
+	IniWrite, % (StartHotkey := "F1"), settings\config.ini, Settings, StartHotkey
+	IniWrite, % (StopHotkey := "F2"), settings\config.ini, Settings, StopHotkey
+	IniWrite, % (OpenCOA := "F3"), settings\config.ini, Settings, OpenCOA
+	IniWrite, % (OpenMedic := "F4"), settings\config.ini, Settings, OpenMedic
+	GuiControl, hotkeys:, StartHotkeyEdit, F1
+	GuiControl, hotkeys:, StopHotkeyEdit, F2
+	GuiControl, hotkeys:, OpenCOAEdit, F3
+	GuiControl, hotkeys:, OpenMedicEdit, F4
+	GuiControl, %hGUI%:, StartButton, % " Start (F1)"
+	GuiControl, %hGUI%:, StopButton, % " Stop (F2)"
+	GuiControl, %hGUI%:, OpenCOA, % " Open Commander Chian (F3)"
+	GuiControl, %hGUI%:, OpenMedic, % " Open medic  (F4)"
+	Hotkey, %StartHotkey%, start, UseErrorLevel On
+	Hotkey, %StopHotkey%, stop, UseErrorLevel On
+	Hotkey, %OpenCOA%, stop, UseErrorLevel On
+	Hotkey, %OpenMedic%, stop, UseErrorLevel On
+}
+
+
+saveHotkey(hCtrl){
+	global
+	local k, v, l, NewHotkey
+	Gui +OwnDialogs
+	GuiControlGet, k, Name, %hCtrl%
+
+	v := StrReplace(k, "Edit")
+	if !(%k% ~= "^[!^+]+$")
+	{
+		switch % Format("sc{:03X}", GetKeySC(%k%))
+	{
+	case FwdKey,LeftKey,BackKey,RightKey,RotLeft,RotRight,RotUp,RotDown,ZoomIn,ZoomOut,SC_E,SC_R,SC_L,SC_Esc,SC_Enter,SC_LShift,SC_Space:
+		GuiControl, , %hCtrl%, % %v%
+		msgbox, 0x1030, Unacceptable Hotkey!, % "That hotkey cannot be used!`nThe key is already used elsewhere in the macro."
+		return
+
+	case SC_1,"sc003","sc004","sc005","sc006","sc007","sc008":
+		GuiControl, , %hCtrl%, % %v%
+		msgbox, 0x1030, Unacceptable Hotkey!, % "That hotkey cannot be used!`nIt will be required to use your tower slots."
+		return
+	}
+
+	if (StrLen(%k%) = 0) || (%k% = StartHotkey) || (%k% = StopHotkey) || (%k% = OpenCOA) || (%k% = OpenMedic)
+		GuiControl, , %hCtrl%, % %v%
+	else {
+		l := StrReplace(v, "Hotkey")
+		Hotkey, % %v%, %l%, UseErrorLevel Off
+		IniWrite, % (%v% := %k%), settings\config.ini, Settings, %v%
+		GuiControl, %hGUI%:, %l%Button, % ((l = "Start") ? " " : (l = "Stop") ? "" : " ") l " (" %v% ")"
+		Hotkey, % %v%, %l%, % ("UseErrorLevel On" (v = "StopButton" ? " T2" : ""))
+		}
+	}
+}
+
+
+saveHotkeyConfig(){
+	global
+	GuiControlGet, ShowOnPause
+	IniWrite, %ShowOnPause%, settings\config.ini, Settings, ShowOnPause
+}
+
+
+SaveGui(){
+	global hGUI, GuiX, GuiY
+	VarSetCapacity(wp, 44), NumPut(44, wp)
+	DllCall("GetWindowPlacement", "uint", hGUI, "uint", &wp)
+	x := NumGet(wp, 28, "int"), y := NumGet(wp, 32, "int")
+	if (x > 0)
+		IniWrite, %x%, settings\config.ini, Settings, GuiX
+	if (y > 0)
+		IniWrite, %y%, settings\config.ini, Settings, GuiY
+}
+
+ReadIni(path) {
+    global
+    local ini, section, key, value
+
+    ini := FileOpen(path, "r"), section := ""
+    while (ini.Read(line)) {
+        ; Trim leading and trailing whitespaces
+        line := RegExReplace(line, "^\s+|\s+$", "")
+        
+        ; Skip empty lines and comments
+        if (line = "" or SubStr(line, 1, 1) = ";")
+            continue
+
+        ; Check for section header
+        if (SubStr(line, 1, 1) = "[") {
+            section := SubStr(line, 2, StrLen(line) - 2)
+            continue
+        }
+
+        ; Parse key-value pairs
+        if (RegExMatch(line, "^\s*(.+?)\s*=\s*(.*)$", match)) {
+            key := match1, value := match2
+            config[section][key] := value
+        }
+    }
+    ini.Close()
+}
+
+SaveAutoSave() {
+	global
+	GuiControlGet, PSLink
+	GuiControlGet, FTower
+	GuiControlGet, STower
+	GuiControlGet, UPKEy
+	GuiControlGet, DelKey
+	GuiControlGet, COAKey
+	IniWrite, %PSLink%, settings\config.ini, AutoSelect, PrivateServerLinkCode
+	IniWrite, %FTower%, settings\config.ini, AutoSelect, EarlyGameTower
+	IniWrite, %STower%, settings\config.ini, AutoSelect, LateGameTower
+	IniWrite, %UPKEy%, settings\config.ini, AutoSelect, UpgradeKey
+	IniWrite, %DelKey%, settings\config.ini, AutoSelect, DeleteKey
+	IniWrite, %COAKey%, settings\config.ini, AutoSelect, CommanderKeyAbility
+}
+
+ResetConfig(){
+	Gui, +OwnDialogs
+	Msgbox, 0x40034, Reset Settings, Are you sure you want to reset ALL settings? This will set all settings back to normal.`nIf you want to proceed, click 'Yes'. Backup your 'settings' folder if you're unsure.
+	IfMsgBox, Yes 
+	{
+		FileRemoveDir, %A_WorkingDir%\settings, 1
+		GoSub, stop
+        reload
+	}
+}
+
+
+Webhook() {
+    ; COMING LATER!!!
+   
+	webhook := % config["Status"]["Webhook"]
+
+    Gui, new
+    Gui, Add, Text,, Discord webhook ID:
+    Gui, Add, Edit, w100 vWebhookID
+    Gui, Add, Button, gSendTest, Send Test
+    Gui, Add, Button, gSetWebhook, Set Discord Webhook
+	Gui, Add, CheckBox, x10 y110 vSendRuntime, Session runtime
+	Gui, Add, CheckBox, x10 y130 vSendWins, Session Wins
+	Gui, Add, CheckBox, x10 y150 vSendLosses, Session Losses
+	Gui, Add, CheckBox, x10 y170 vSendCoins, Avg Coins/hr 
+	Gui, Add, CheckBox, x10 y190 vSendDisconnects, Session Disconnects
+	Gui, Add, CheckBox, x150 y110 vTSendRuntime, Total runtime
+	Gui, Add, CheckBox, x150 y130 vTSendWins, Total Wins
+	Gui, Add, CheckBox, x150 y150 vTSendLosses, Total Losses
+	Gui, Add, CheckBox, x150 y170 vTSendCoins, Total Coins
+	Gui, Add, CheckBox, x150 y190 vTSendDisconnects, Total Disconnects
+	Gui, Add, CheckBox, x75 y210 vSessionTotalCheck gEnableAll Checked%Enable%, Enable all
+    Gui, Show, AutoSize, Discord webhook settings
+
+}
+
+CheckAndSendReport:
+{
+	if (TSendRuntime true)
+		MsgBox, test
+}
+
 
 SaveConfig() {
     ini := ""
@@ -494,5 +592,58 @@ SaveConfig() {
     FileAppend, %ini%, %A_WorkingDir%\settings\config.ini
 }
 
+ServerLink(hEdit){
+	global PrivServer, FallbackServer1, FallbackServer2, FallbackServer3
+	ControlGet, p, CurrentCol, , , ahk_id %hEdit%
+	GuiControlGet, k, Name, %hEdit%
+	GuiControlGet, str, , %hEdit%
+
+	RegExMatch(str, "i)((http(s)?):\/\/)?((www|web)\.)?roblox\.com\/games\/3260590327\/?([^\/]*)\?privateServerLinkCode=.{32}(\&[^\/]*)*", NewPrivServer)
+    if ((StrLen(str) > 0) && (StrLen(NewPrivServer) = 0))
+	{
+        GuiControl, , %hEdit%, % %k%
+        SendMessage, 0xB1, % p-2, % p-2, , ahk_id %hEdit%
+		ShowErrorBalloonTip(hEdit, "Invalid Private Server Link", "Make sure your link is:`r`n- Copied correctly and completely (Don't type it in)`r`n- For Tower Defense Simulator or it will not work.`r`n- Not a share code link (PrivateServerLinkCode= not Share-links=)")
+    }
+    else
+	{
+		%k% := NewPrivServer
+		GuiControl, , %hEdit%, % %k%
+		IniWrite, % %k%, settings\config.ini, Settings, %k%
+
+		if (k = "PrivServer")
+		{
+			Prev_DetectHiddenWindows := A_DetectHiddenWindows
+			Prev_TitleMatchMode := A_TitleMatchMode
+			DetectHiddenWindows On
+			SetTitleMatchMode 2
+			if WinExist("Status.ahk ahk_class AutoHotkey")
+				PostMessage, 0x5553, 10, 7
+			DetectHiddenWindows %Prev_DetectHiddenWindows%
+			SetTitleMatchMode %Prev_TitleMatchMode%
+		}
+	}
+}
+
+ShowErrorBalloonTip(hEdit, Title, Text){
+	NumPut(VarSetCapacity(EBT, 4 * A_PtrSize, 0), EBT, 0, "UInt")
+	If !(A_IsUnicode) {
+		VarSetCapacity(WTitle, StrLen(Title) * 4, 0)
+		VarSetCapacity(WText, StrLen(Text) * 4, 0)
+		StrPut(Title, &WTitle, "UTF-16")
+		StrPut(Text, &WText, "UTF-16")
+	}
+	NumPut(A_IsUnicode ? &Title : &WTitle, EBT, A_PtrSize, "Ptr")
+	NumPut(A_IsUnicode ? &Text : &WText, EBT, A_PtrSize * 2, "Ptr")
+	NumPut(3, EBT, A_PtrSize * 3, "UInt")
+	DllCall("SendMessage", "UPtr", hEdit, "UInt", 0x1503, "Ptr", 0, "Ptr", &EBT, "Ptr")
+}
+
+SetSettings() {
+    SaveAutoSave()
+    MsgBox, Preferences saved.
+}
+
 GuiClose:
+SaveAutoSave()
 ExitApp
