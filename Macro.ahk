@@ -4,10 +4,10 @@ Github: https://github.com/LucasLiorLE/TDS-Macro
 */
 
 #SingleInstance On
-#NoEnv  ; Recommended for performance and compatibility with future AutoHotkey releases.
-; #Warn  ; Enable warnings to assist with detecting common errors.
-SendMode Input  ; Recommended for new scripts due to its superior speed and reliability.
-SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
+#NoEnv
+#Warn  ; On for now for me to dectect errors
+SendMode Input  
+SetWorkingDir %A_ScriptDir%  
 
 RunWith(32)
 RunWith(bits) {
@@ -54,10 +54,10 @@ If (!FileExist("settings")) ; make sure the settings folder exists
 	}
 }
 
-VersionID := "0.1.0-b.1"
+VersionID := "Pre-release 0.1.0-b.1"
 
 if (A_ScreenDPI*100//96 != 100)
-msgbox, 0x1030, WARNING!!, % "Your Display Scale seems to be a value other than 100`%. This means the macro will NOT work correctly!`n`nTo change this, right click on your Desktop -> Click 'Display Settings' -> Under 'Scale & Layout', set Scale to 100`% -> Close and Restart Roblox before starting the macro.", 60
+	msgbox, 0x1030, WARNING!!, % "Your Display Scale seems to be a value other than 100`%. This means the macro will NOT work correctly!`n`nTo change this, right click on your Desktop -> Click 'Display Settings' -> Under 'Scale & Layout', set Scale to 100`% -> Close and Restart Roblox before starting the macro.", 60
 
 DetectHiddenWindows, On
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
