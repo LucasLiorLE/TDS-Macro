@@ -12,7 +12,7 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 RunWith(32)
 RunWith(bits) {
 If (A_IsCompiled || (A_IsUnicode && (A_PtrSize = (bits = 32 ? 4 : 8))))
-Return
+	Return
 
 SplitPath, A_AhkPath,, ahkDirectory
 
@@ -23,26 +23,22 @@ Else
 
 ExitApp
 }
-Reload(ahkpath) {
-static cmd := DllCall("GetCommandLine", "Str"), params := DllCall("shlwapi\PathGetArgs","Str",cmd,"Str")
-Run % """" ahkpath """ /r " params
+	Reload(ahkpath) {
+	static cmd := DllCall("GetCommandLine", "Str"), params := DllCall("shlwapi\PathGetArgs","Str",cmd,"Str")
+	Run % """" ahkpath """ /r " params
 }
 
 h := DllCall("CreateFile", "Str", A_ScriptFullPath, "UInt", 0x40000000, "UInt", 0, "UInt", 0, "UInt", 4, "UInt", 0, "UInt", 0), DllCall("CloseHandle", "UInt", h)
 if (h = -1)
 {
-if (!A_IsAdmin || !(DllCall("GetCommandLine","Str") ~= " /restart(?!\S)"))
-Try RunWait, *RunAs "%A_AhkPath%" /script /restart "%A_ScriptFullPath%"
-if !A_IsAdmin {
-MsgBox, 0x40010, Error, You must run the macro as administrator in this folder!`nIf you don't want to do this, move the macro to a different folder (e.g. Downloads, Desktop)
-ExitApp
-}
+	if (!A_IsAdmin || !(DllCall("GetCommandLine","Str") ~= " /restart(?!\S)"))
+		Try RunWait, *RunAs "%A_AhkPath%" /script /restart "%A_ScriptFullPath%"
+	if !A_IsAdmin {
+		MsgBox, 0x40010, Error, You must run the macro as administrator in this folder!`nIf you don't want to do this, move the macro to a different folder (e.g. Downloads, Desktop)
+		ExitApp
+	}
 MsgBox, 0x40010, Error, You cannot run the macro in this folder!`nTry moving the macro to a different folder (e.g. Downloads, Desktop)
 }
-
-; declare executable paths
-global exe_path32 := A_AhkPath
-global exe_path64 := (A_Is64bitOS && FileExist("submacros\AutoHotkeyU64.exe")) ? (A_WorkingDir "\submacros\AutoHotkeyU64.exe") : A_AhkPath
 
 ;==========================
 
@@ -50,15 +46,15 @@ global exe_path64 := (A_Is64bitOS && FileExist("submacros\AutoHotkeyU64.exe")) ?
 
 If (!FileExist("settings")) ; make sure the settings folder exists
 {
-FileCreateDir, settings
-If (ErrorLevel)
-{
-MsgBox, 0x40010, Error, Could not create the settings directory!`nTry moving the macro to a different folder (e.g. Downloads, Desktop)
-ExitApp
-}
+	FileCreateDir, settings
+	If (ErrorLevel)
+	{
+		MsgBox, 0x40010, Error, Could not create the settings directory!`nTry moving the macro to a different folder (e.g. Downloads, Desktop)
+		ExitApp
+	}
 }
 
-VersionID := "0.0.1"
+VersionID := "0.1.0-b.1"
 
 if (A_ScreenDPI*100//96 != 100)
 msgbox, 0x1030, WARNING!!, % "Your Display Scale seems to be a value other than 100`%. This means the macro will NOT work correctly!`n`nTo change this, right click on your Desktop -> Click 'Display Settings' -> Under 'Scale & Layout', set Scale to 100`% -> Close and Restart Roblox before starting the macro.", 60
